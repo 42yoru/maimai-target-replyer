@@ -383,7 +383,8 @@ class JudgeIntegrationTest(PluginTestCase):
         self.assertIn("今晚维护吗？", prompt)
         self.assertIn("测试群", prompt)
         self.assertIn("目标用户", prompt)
-        self.assertIn("你是助手。是一个测试助手", prompt)
+        self.assertIn("你的名字是助手", prompt)
+        self.assertIn("是一个测试助手", prompt)
 
     async def test_judge_answer_points_go_into_intent(self) -> None:
         await self.deliver(build_message())

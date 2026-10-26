@@ -47,7 +47,8 @@ PROMPT_PLACEHOLDERS = frozenset(
 REQUIRED_PLACEHOLDERS = frozenset({"text", "recent"})
 """提示词模板必须包含的占位符。"""
 
-DEFAULT_PROMPT_TEMPLATE = """你是$bot_name。$bot_persona
+DEFAULT_PROMPT_TEMPLATE = """你的名字是$bot_name。以下是你的人设：
+$bot_persona
 
 现在$place有人 @ 了「$target_name」，这条消息是发给他的，但他本人没有回应。
 

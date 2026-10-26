@@ -94,7 +94,8 @@ class BuildPromptTest(TestCase):
         self.assertIn("不模仿他", prompt)
         self.assertIn("不声明自己在替谁回答", prompt)
         self.assertIn('"action"', prompt)
-        self.assertIn("你是助手。是一个测试助手", prompt)
+        self.assertIn("你的名字是助手", prompt)
+        self.assertIn("是一个测试助手", prompt)
 
     def test_default_template_has_no_hardcoded_persona(self) -> None:
         self.assertNotIn("夜夜", JUDGE.DEFAULT_PROMPT_TEMPLATE)
@@ -108,7 +109,8 @@ class BuildPromptTest(TestCase):
             bot_name="小明",
             bot_persona="是一个测试助手",
         )
-        self.assertTrue(prompt.startswith("你是小明。是一个测试助手"))
+        self.assertTrue(prompt.startswith("你的名字是小明"))
+        self.assertIn("是一个测试助手", prompt)
 
 
 class PromptTemplateTest(TestCase):
