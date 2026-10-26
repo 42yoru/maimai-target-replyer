@@ -4,6 +4,14 @@
   "plugin_type": "extension",
   "name": "替主人回话 (Target Replyer)",
   "description": "群里有人 @ 配置的目标账号时，先做规则筛选再用便宜模型预判，通过后触发一次 Maisaka 主动任务，由宿主自己的 Planner 决定怎么自然接话。bot 昵称与人格从宿主配置读取，插件不写死人设。纯插件实现，不改主程序。",
+  "display": {
+    "icon": {
+      "type": "local",
+      "value": "icon.png",
+      "fallback": "message-circle",
+      "background": "#FFD69A"
+    }
+  },
   "author": {
     "name": "42yoru",
     "url": "https://github.com/42yoru"

@@ -1,5 +1,9 @@
 # 替主人回话（Target Replyer）
 
+<p align="center">
+  <img src="icon.png" width="180" alt="插件图标">
+</p>
+
 <p>
   <a href="https://github.com/42yoru/maimai-target-replyer/actions/workflows/ci.yml"><img src="https://github.com/42yoru/maimai-target-replyer/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
