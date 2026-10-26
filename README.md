@@ -56,12 +56,12 @@ plugins/maimai_target_replyer/
   judge.py
   rules.py
   state.py
-  config.toml
+  config.toml          # 首次加载后由宿主生成
 ```
 
 ### 第 2 步：改两个值
 
-打开 `config.toml`：
+在 WebUI 的插件配置页改，或者编辑宿主生成的 `config.toml`：
 
 ```toml
 [target]
@@ -72,6 +72,7 @@ groups = ["123456789"]       # 只在这个群生效
 ```
 
 > `groups` 留空 = 插件完全不生效。这是故意的：避免刚装上就在所有群说话。
+> 填好之后记得把 `plugin.enabled` 打开。
 
 ### 第 3 步：重载或重启
 

@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "plugin_type": "extension",
   "name": "替主人回话 (Target Replyer)",
   "description": "群里有人 @ 配置的目标账号时，先做规则筛选再用便宜模型预判，通过后触发一次 Maisaka 主动任务，由宿主自己的 Planner 决定怎么自然接话。bot 昵称与人格从宿主配置读取，插件不写死人设。纯插件实现，不改主程序。",
@@ -18,7 +18,10 @@
   },
   "license": "MIT",
   "urls": {
-    "repository": "https://github.com/42yoru/maimai-target-replyer"
+    "repository": "https://github.com/42yoru/maimai-target-replyer",
+    "homepage": "https://github.com/42yoru/maimai-target-replyer",
+    "documentation": "https://github.com/42yoru/maimai-target-replyer/blob/main/README.md",
+    "issues": "https://github.com/42yoru/maimai-target-replyer/issues"
   },
   "host_application": {
     "min_version": "1.3.9",
@@ -41,5 +44,6 @@
       "zh-CN"
     ]
   },
-  "id": "github.42yoru.maimai-target-replyer"
+  "id": "github.42yoru.maimai-target-replyer",
+  "changelog": "CHANGELOG.md"
 }

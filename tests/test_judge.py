@@ -133,6 +133,10 @@ class PromptTemplateTest(TestCase):
         with self.assertRaises(JUDGE.PromptTemplateError):
             JUDGE.validate_prompt_template("   ")
 
+    def test_invalid_dollar_syntax_rejected(self) -> None:
+        with self.assertRaises(JUDGE.PromptTemplateError):
+            JUDGE.validate_prompt_template("$text $recent 价格$100")
+
     def test_custom_template(self) -> None:
         prompt = JUDGE.build_prompt(
             group_name="测试群",

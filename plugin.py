@@ -64,7 +64,7 @@ class PluginSectionConfig(PluginConfigBase):
     __ui_order__ = 0
 
     enabled: bool = Field(default=False, description="是否启用插件")
-    config_version: str = Field(default="0.2.0", description="配置版本")
+    config_version: str = Field(default="0.3.0", description="配置版本")
 
 
 class TargetConfig(PluginConfigBase):
@@ -329,14 +329,14 @@ class TargetReplyerPlugin(MaiBotPlugin):
         if not message_id or not stream_id:
             self.ctx.logger.error("候选消息缺少 message_id 或 session_id，跳过: %r", message)
             return
-        if stream_id in self._pending_streams:
-            self.ctx.logger.info("同一聊天流已有待处理的接话任务，跳过 message_id=%s", message_id)
-            return
 
         now = time.time()
         async with self._state_lock:
             if self._state is None:
                 self.ctx.logger.error("状态存储尚未初始化，跳过消息: %s", message_id)
+                return
+            if stream_id in self._pending_streams:
+                self.ctx.logger.info("同一聊天流已有待处理的接话任务，跳过 message_id=%s", message_id)
                 return
             if self._state.is_processed(message_id, now):
                 self.ctx.logger.debug("消息已处理过，跳过: %s", message_id)

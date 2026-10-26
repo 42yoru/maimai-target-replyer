@@ -218,6 +218,12 @@ class TriggerTest(PluginTestCase):
         await self.deliver(dict(message))
         self.assertEqual(len(self.host.proactive_calls), 1)
 
+    async def test_same_stream_only_one_pending(self) -> None:
+        await self.plugin.watch_inbound(message=build_message(message_id="m1"))
+        await self.plugin.watch_inbound(message=build_message(message_id="m2"))
+        await self.plugin.wait_pending()
+        self.assertEqual(len(self.host.proactive_calls), 1)
+
     async def test_retry_when_session_not_ready(self) -> None:
         self.host.trigger_results = [
             {"success": False, "error": "未找到已存在的聊天流"},

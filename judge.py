@@ -122,6 +122,13 @@ def validate_prompt_template(template: str) -> List[str]:
         raise PromptTemplateError(
             "模板缺少必需占位符：" + "、".join(f"${name}" for name in missing)
         )
+
+    # get_identifiers() 不会为「$100」这类非法写法报错，实际替换时才炸；这里先试替换一遍。
+    probe = {name: "" for name in PROMPT_PLACEHOLDERS}
+    try:
+        Template(text).substitute(probe)
+    except (KeyError, ValueError) as exc:
+        raise PromptTemplateError(f"模板里有无法解析的占位符: {exc}") from exc
     return sorted(identifiers)
 
 

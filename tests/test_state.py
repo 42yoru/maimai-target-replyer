@@ -78,6 +78,14 @@ class StateStoreTest(TestCase):
         with self.assertRaises(STATE.StateError):
             self.store.load()
 
+    def test_non_numeric_timestamp_raises(self) -> None:
+        (Path(self._tmp.name) / "state.json").write_text(
+            '{"processed": {"m1": "not-a-number"}}',
+            encoding="utf-8",
+        )
+        with self.assertRaises(STATE.StateError):
+            self.store.load()
+
     def test_prune_processed_ttl(self) -> None:
         self.store.mark_processed("old", 1000.0)
         self.store.prune(1000.0 + 24 * 3600 + 1)

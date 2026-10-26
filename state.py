@@ -67,9 +67,16 @@ class StateStore:
         if not isinstance(processed, dict) or not isinstance(last_trigger, dict) or not isinstance(trigger_times, list):
             raise StateError("状态文件字段结构不合法")
 
-        self._processed = {str(key): float(value) for key, value in processed.items()}
-        self._last_trigger = {str(key): float(value) for key, value in last_trigger.items()}
-        self._trigger_times = [float(value) for value in trigger_times]
+        try:
+            normalized_processed = {str(key): float(value) for key, value in processed.items()}
+            normalized_last_trigger = {str(key): float(value) for key, value in last_trigger.items()}
+            normalized_trigger_times = [float(value) for value in trigger_times]
+        except (TypeError, ValueError) as exc:
+            raise StateError(f"状态文件里的时间戳不合法: {exc}") from exc
+
+        self._processed = normalized_processed
+        self._last_trigger = normalized_last_trigger
+        self._trigger_times = normalized_trigger_times
 
     def save(self) -> None:
         """原子写回磁盘。
