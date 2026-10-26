@@ -127,6 +127,10 @@ class MessageRulesTest(TestCase):
         self.assertEqual(RULES.message_epoch(build_message()), 1700000000.0)
         self.assertIsNone(RULES.message_epoch({"timestamp": "not-a-number"}))
 
+    def test_message_epoch_normalizes_milliseconds_and_microseconds(self) -> None:
+        self.assertEqual(RULES.message_epoch({"timestamp": "1700000000000"}), 1700000000.0)
+        self.assertEqual(RULES.message_epoch({"timestamp": "1700000000000000"}), 1700000000.0)
+
 
 class BuildIntentTest(TestCase):
     """任务说明拼装。"""

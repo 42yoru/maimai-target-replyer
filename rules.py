@@ -15,6 +15,12 @@ ALL_TARGET_ID = "all"
 COMMAND_PREFIXES = ("/", "／")
 """命令消息的前缀；宿主真正的命令匹配在更晚的链路，这里只能按前缀近似排除。"""
 
+_EPOCH_MS_THRESHOLD = 1e11
+"""超过这个量级就按毫秒时间戳处理（秒级时间戳要到公元 5138 年才会达到）。"""
+
+_EPOCH_US_THRESHOLD = 1e14
+"""超过这个量级就按微秒时间戳处理。"""
+
 
 @dataclass(frozen=True)
 class Target:
@@ -177,13 +183,24 @@ def is_command_text(text: str) -> bool:
 
 
 def message_epoch(message: Dict[str, Any]) -> Optional[float]:
-    """把消息里的秒级时间戳字符串转成浮点数；格式不对返回 None。"""
+    """把消息里的时间戳统一转成秒级浮点数；格式不对返回 None。
+
+    不同适配器可能给秒、毫秒或微秒，量级差 1000 倍会让「最近发言」的窗口直接失效，
+    所以这里按数值量级归一化，而不是假定只有秒。
+    """
 
     raw = message.get("timestamp")
     try:
-        return float(str(raw))
+        value = float(str(raw))
     except (TypeError, ValueError):
         return None
+
+    magnitude = abs(value)
+    if magnitude >= _EPOCH_US_THRESHOLD:
+        return value / 1_000_000
+    if magnitude >= _EPOCH_MS_THRESHOLD:
+        return value / 1_000
+    return value
 
 
 def build_intent(
