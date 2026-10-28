@@ -1,5 +1,20 @@
 # 更新日志
 
+## 0.3.3
+
+### 修复
+
+- **bot 身份取不到时所有「让路」保护静默失效**：`bot.qq_account` 在宿主里只是「适配器没上报身份时的
+  备用账号」、默认空串。一旦为空，「同时 @ 了 bot」「bot 自己发的消息」「bot 最近 40 秒说过话就让路」
+  三条规则会被 `if self._bot_account and ...` 全部跳过，而这是插件唯一的防重复回复/防刷屏机制。
+  现在把每条消息自带的 `account_id` 也算作 bot 身份（两个来源取并集），并在配置为空时
+  `logger.error` 明确指出「让路规则将不生效」而不是无声降级
+
+### 细节
+
+- 测试 74 → 76：新增「`bot.qq_account` 为空时靠 `account_id` 认出 bot 自己 / 认出 @ 了 bot」两条
+- 顺带把识别 bot 的逻辑收进 `_bot_accounts_for(message)`，`_screen` 与 `_presence_allows` 共用
+
 ## 0.3.2
 
 ### 细节

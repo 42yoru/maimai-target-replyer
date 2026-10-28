@@ -278,6 +278,32 @@ class SkipRulesTest(PluginTestCase):
         await self.deliver(message)
         self.assertEqual(self.host.proactive_calls, [])
 
+    async def test_bot_identity_works_without_configured_account(self) -> None:
+        """bot.qq_account 为空时，仍靠消息自带的 account_id 认出 bot 自己。
+
+        宿主里 bot.qq_account 只是「适配器没上报身份时的备用账号」、默认空串；一旦为空，
+        原来三条让路规则会全部静默失效——而那是插件唯一的防重复回复机制。
+        """
+
+        self.host.bot_account = ""
+
+        message = build_message()
+        message["message_info"]["user_info"]["user_id"] = "10001"  # 等于消息自带的 account_id
+        await self.deliver(message)
+
+        self.assertEqual(self.host.proactive_calls, [])
+
+    async def test_also_at_bot_without_configured_account(self) -> None:
+        """同上：@ 了"消息归属的 bot 账号"也算 @ 了 bot 自己。"""
+
+        self.host.bot_account = ""
+
+        message = build_message()
+        message["raw_message"].append({"type": "at", "data": {"target_user_id": "10001"}})
+        await self.deliver(message)
+
+        self.assertEqual(self.host.proactive_calls, [])
+
     async def test_command_text(self) -> None:
         message = build_message(processed_plain_text="/接话 状态")
         await self.deliver(message)

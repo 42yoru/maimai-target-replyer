@@ -67,7 +67,7 @@ class PluginSectionConfig(PluginConfigBase):
         default=False,
         description="是否启用插件；宿主在加载阶段读取，关闭时不会导入插件代码，改完需要重启",
     )
-    config_version: str = Field(default="0.3.2", description="配置版本")
+    config_version: str = Field(default="0.3.3", description="配置版本")
 
 
 class TargetConfig(PluginConfigBase):
@@ -307,13 +307,15 @@ class TargetReplyerPlugin(MaiBotPlugin):
         sender = sender_id(message)
         if sender == self._target.user_id:
             return "目标账号自己发的消息"
-        if self._bot_account and sender == self._bot_account:
+        bot_accounts = self._bot_accounts_for(message)
+        if sender and sender in bot_accounts:
             return "bot 自己发的消息"
 
         if self._target.user_id not in at_target_ids(message):
             return "没有 @ 目标账号"
-        if self._bot_account and has_at(message, self._bot_account):
-            return "同时 @ 了 bot 自己，让主程序处理"
+        for account in bot_accounts:
+            if has_at(message, account):
+                return "同时 @ 了 bot 自己，让主程序处理"
 
         text = message_text(message)
         if is_command_text(text):
@@ -391,6 +393,18 @@ class TargetReplyerPlugin(MaiBotPlugin):
             return None
         return [item for item in recent if isinstance(item, dict)]
 
+    def _bot_accounts_for(self, message: Dict[str, Any]) -> Set[str]:
+        """「这条消息的 bot 自己」可能的账号集合。
+
+        两个来源都要算：消息自带的 `account_id`（宿主一定会带，但可能只是内部账号标识，
+        不等于 QQ 号）与配置里的 `bot.qq_account`（适配器没上报身份时的备用值、默认空串）。
+        只认其中一个会让「@bot 让路」「bot 说过话就让路」在另一种取值下静默失效。
+        """
+
+        accounts = {str(message.get("account_id") or "").strip(), self._bot_account}
+        accounts.discard("")
+        return accounts
+
     def _presence_allows(self, recent: List[Dict[str, Any]]) -> bool:
         """判断目标账号或 bot 自己是不是刚说过话。"""
 
@@ -402,7 +416,8 @@ class TargetReplyerPlugin(MaiBotPlugin):
             occurred_at = message_epoch(item)
             if occurred_at is None:
                 continue
-            if self._bot_account and user_id == self._bot_account and now - occurred_at <= BOT_RECENT_WINDOW_SECONDS:
+            # 每条消息各自带 account_id，用它判断"这条是不是 bot 说的"，比只看全局配置更准
+            if user_id and user_id in self._bot_accounts_for(item) and now - occurred_at <= BOT_RECENT_WINDOW_SECONDS:
                 bot_recent = True
                 break
             if (
@@ -611,17 +626,29 @@ class TargetReplyerPlugin(MaiBotPlugin):
             self.ctx.logger.error("提示词模板配置错误，预判将一直失败: %s", exc)
 
     async def _read_bot_account(self) -> str:
-        """读取宿主配置里的 bot QQ 号，用于排除 @bot 自己和 bot 自己发的消息。"""
+        """读取宿主配置里的 bot QQ 号，作为「消息自带 account_id」取不到时的兜底。
+
+        空值不能静默：`bot.qq_account` 在宿主里只是「适配器没上报身份时的备用账号」、默认空串，
+        一旦为空，「同时 @ 了 bot」「bot 自己发的消息」「bot 最近说过话就让路」三条规则会全部失效，
+        而这正是插件唯一的防重复回复机制。
+        """
 
         try:
             value = await self.ctx.config.get("bot.qq_account", "")
         except Exception as exc:
-            self.ctx.logger.warning("读取 bot.qq_account 失败: %s", exc)
+            self.ctx.logger.error("读取 bot.qq_account 失败，bot 身份只能依赖消息自带的 account_id: %s", exc)
             return ""
         if not isinstance(value, str):
-            self.ctx.logger.warning("bot.qq_account 不是字符串，@bot 让路规则将不可用: %r", value)
+            self.ctx.logger.error("bot.qq_account 不是字符串，bot 身份只能依赖消息自带的 account_id: %r", value)
             return ""
-        return value.strip()
+        account = value.strip()
+        if not account:
+            self.ctx.logger.error(
+                "未能从配置确定 bot 账号（bot.qq_account 为空）：bot 身份将改由每条消息自带的 account_id 提供；"
+                "如果你的适配器不上报 account_id，@bot 让路与「bot 刚说过话」让路都不会生效，"
+                "请在 bot_config.toml 的 bot.qq_account 里填上 bot 的账号"
+            )
+        return account
 
     async def _read_bot_profile(self) -> None:
         """读取宿主配置里的 bot 昵称与人格，供提示词注入；不写死具体人设。"""
