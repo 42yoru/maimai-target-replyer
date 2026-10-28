@@ -224,6 +224,15 @@ class TriggerTest(PluginTestCase):
         await self.plugin.wait_pending()
         self.assertEqual(len(self.host.proactive_calls), 1)
 
+    async def test_non_retryable_error_gives_up_immediately(self) -> None:
+        """配置错/未授权这类错误重试三次也是同一个结果，只该试一次。"""
+
+        self.host.trigger_results = [{"success": False, "error": "插件未获授权：maisaka.proactive.trigger"}]
+
+        await self.deliver(build_message())
+
+        self.assertEqual(len(self.host.proactive_calls), 1)
+
     async def test_retry_when_session_not_ready(self) -> None:
         self.host.trigger_results = [
             {"success": False, "error": "未找到已存在的聊天流"},

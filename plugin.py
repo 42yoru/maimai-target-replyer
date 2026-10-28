@@ -55,6 +55,18 @@ BOT_RECENT_WINDOW_SECONDS = 40
 TRIGGER_MAX_ATTEMPTS = 3
 """主动任务投递的最大尝试次数（会话刚注册时可能查不到）。"""
 
+_TRANSIENT_TRIGGER_ERRORS = ("未找到已存在的聊天流", "not found", "timeout", "超时")
+
+
+def _is_transient_trigger_error(error_text: str) -> bool:
+    """投递失败是否值得重试。
+
+    只有「会话刚注册、宿主还没登记这条流」和网络类抖动才重试；配置错、未授权这类
+    重试三次也是同一个结果，只会把这条消息的处理时间拖长。
+    """
+
+    return any(marker in error_text for marker in _TRANSIENT_TRIGGER_ERRORS)
+
 
 class PluginSectionConfig(PluginConfigBase):
     """插件基础配置。"""
@@ -67,7 +79,7 @@ class PluginSectionConfig(PluginConfigBase):
         default=False,
         description="是否启用插件；宿主在加载阶段读取，关闭时不会导入插件代码，改完需要重启",
     )
-    config_version: str = Field(default="0.3.3", description="配置版本")
+    config_version: str = Field(default="0.3.4", description="配置版本")
 
 
 class TargetConfig(PluginConfigBase):
@@ -578,8 +590,10 @@ class TargetReplyerPlugin(MaiBotPlugin):
                     reason="群消息 @ 了目标账号",
                     metadata=metadata,
                 )
-            except Exception as exc:  # 单次 RPC 失败不终止重试
-                self.ctx.logger.error("主动任务投递异常（第 %s/%s 次）: %s", attempt, TRIGGER_MAX_ATTEMPTS, exc)
+            except Exception as exc:  # 单次 RPC 失败（超时/连接抖动）值得重试
+                self.ctx.logger.error(
+                    "主动任务投递异常（第 %s/%s 次）: %s", attempt, TRIGGER_MAX_ATTEMPTS, exc, exc_info=True
+                )
                 result = None
 
             if isinstance(result, dict) and result.get("success"):
@@ -595,12 +609,17 @@ class TargetReplyerPlugin(MaiBotPlugin):
                         self._save_state()
                 return
 
+            error_text = str(result.get("error") or "") if isinstance(result, dict) else repr(result)
             self.ctx.logger.error(
-                "主动任务投递失败（第 %s/%s 次）: %r",
+                "主动任务投递失败（第 %s/%s 次）: %s",
                 attempt,
                 TRIGGER_MAX_ATTEMPTS,
-                result,
+                error_text or repr(result),
             )
+            if result is not None and not _is_transient_trigger_error(error_text):
+                # 配置错/未授权这类问题重试三次也还是同一个结果，只会拖长这条消息的处理时间
+                self.ctx.logger.error("这个错误不可重试，放弃本次接话: %s", error_text)
+                return
             if attempt < TRIGGER_MAX_ATTEMPTS:
                 await asyncio.sleep(self.config.reply.retry_delay_seconds)
 
