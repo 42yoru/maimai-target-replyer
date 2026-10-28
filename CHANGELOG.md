@@ -1,5 +1,15 @@
 # 更新日志
 
+## 0.3.2
+
+### 细节
+
+- **`plugin.enabled` 的说明与宿主行为对齐**：关闭时宿主在加载阶段就跳过本插件（`plugin_enabled.py`），
+  根本不会导入插件代码、Hook 也收不到消息。原来 README 与配置提示写的是「关掉后 Hook 仍会收到消息，
+  但一律不处理」，与实际不符，现在统一成「关闭＝宿主不加载，改完需要重启」
+- manifest：`sdk` 区间由 `2.16.0–2.16.99` 改为 `2.12.0–2.99.99`——`ctx.config.get`、
+  `ctx.message.get_recent`、`ctx.maisaka.proactive.trigger`、`call_capability` 在 2.12.0 与 2.19.0 上签名一致
+
 ## 0.3.1
 
 ### 细节

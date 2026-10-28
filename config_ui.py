@@ -117,7 +117,7 @@ _HINTS: Dict[str, str] = {
     "reply.delay_seconds": "命中规则后延迟多久再读上下文并触发，留给主链注册会话。",
     "reply.retry_delay_seconds": "会话还没注册、主动任务投递失败时的重试间隔。",
     "reply.max_text_chars": "拼进 Planner 任务书的原文最大长度。",
-    "plugin.enabled": "总开关；关掉后 Hook 仍会收到消息，但一律不处理。",
+    "plugin.enabled": "总开关；宿主在加载阶段就读这个开关，关闭时不会导入插件代码（Hook 也收不到消息），改完需要重启。",
     "plugin.config_version": "由插件维护，不建议手动修改。",
 }
 

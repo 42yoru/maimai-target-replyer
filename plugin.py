@@ -63,8 +63,11 @@ class PluginSectionConfig(PluginConfigBase):
     __ui_icon__ = "package"
     __ui_order__ = 0
 
-    enabled: bool = Field(default=False, description="是否启用插件")
-    config_version: str = Field(default="0.3.1", description="配置版本")
+    enabled: bool = Field(
+        default=False,
+        description="是否启用插件；宿主在加载阶段读取，关闭时不会导入插件代码，改完需要重启",
+    )
+    config_version: str = Field(default="0.3.2", description="配置版本")
 
 
 class TargetConfig(PluginConfigBase):

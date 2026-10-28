@@ -9,3 +9,7 @@ state.json
 
 # 运行时配置由宿主按 config_model 生成，不进仓库
 /config.toml
+
+# 本地配置备份目录可能含真实账号/群号，绝不入库
+config_back/
+*.toml.backup.*
