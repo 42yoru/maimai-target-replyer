@@ -79,7 +79,7 @@ class PluginSectionConfig(PluginConfigBase):
         default=False,
         description="是否启用插件；宿主在加载阶段读取，关闭时不会导入插件代码，改完需要重启",
     )
-    config_version: str = Field(default="0.3.4", description="配置版本")
+    config_version: str = Field(default="0.3.5", description="配置版本")
 
 
 class TargetConfig(PluginConfigBase):
@@ -302,6 +302,9 @@ class TargetReplyerPlugin(MaiBotPlugin):
             return "不是群聊消息"
 
         message_platform = platform(message)
+        # target.user 写的是 platform:user_id：平台必须对上，否则同号不同平台会被误触发
+        if self._target.platform and message_platform != self._target.platform:
+            return f"消息平台 {message_platform or '(空)'} 与目标账号平台 {self._target.platform} 不一致"
         platforms = [item.strip() for item in self.config.scope.platforms if item.strip()]
         if platforms and message_platform not in platforms:
             return f"平台 {message_platform or '(空)'} 不在生效范围"
@@ -581,6 +584,19 @@ class TargetReplyerPlugin(MaiBotPlugin):
             "group_id": group_id(message),
             "judge_reason": judge_reason,
         }
+
+        # 入场时的额度检查是 check-then-act：多个聊天流并发时都会通过，真正记账却在投递成功之后，
+        # 上限会被打穿。投递前在锁里复核一次，超限就不投了。
+        async with self._state_lock:
+            if self._state is not None:
+                used = self._state.hourly_count(time.time())
+                if used >= self.config.reply.hourly_limit:
+                    self.ctx.logger.info(
+                        "投递前复核额度：本小时已触发 %s 次，达到上限 %s，放弃本次接话",
+                        used,
+                        self.config.reply.hourly_limit,
+                    )
+                    return
 
         for attempt in range(1, TRIGGER_MAX_ATTEMPTS + 1):
             try:

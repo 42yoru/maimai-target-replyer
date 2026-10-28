@@ -224,6 +224,37 @@ class TriggerTest(PluginTestCase):
         await self.plugin.wait_pending()
         self.assertEqual(len(self.host.proactive_calls), 1)
 
+    async def test_platform_mismatch_skips(self) -> None:
+        """target.user 的平台前缀必须与消息平台一致，否则同号不同平台会被误触发。"""
+
+        self.plugin.config.target.user = "telegram:999999"
+        self.plugin._refresh_target()
+
+        await self.deliver(build_message())
+
+        self.assertEqual(self.host.proactive_calls, [])
+
+    async def test_quota_rechecked_before_trigger(self) -> None:
+        """投递前要复核额度：多个聊天流并发时，入场检查都会通过，记账却发生在后面。"""
+
+        plugin = self.plugin
+        plugin.config.reply.hourly_limit = 2
+        calls = {"n": 0}
+        original = plugin._state.hourly_count
+
+        def flaky_count(now: float) -> int:
+            calls["n"] += 1
+            # 入场检查（第 1 次）放行，投递前复核（第 2 次）已经到上限
+            return 0 if calls["n"] == 1 else 99
+
+        plugin._state.hourly_count = flaky_count  # type: ignore[method-assign]
+        try:
+            await self.deliver(build_message())
+        finally:
+            plugin._state.hourly_count = original  # type: ignore[method-assign]
+
+        self.assertEqual(self.host.proactive_calls, [])
+
     async def test_non_retryable_error_gives_up_immediately(self) -> None:
         """配置错/未授权这类错误重试三次也是同一个结果，只该试一次。"""
 
