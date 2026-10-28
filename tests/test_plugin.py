@@ -538,10 +538,14 @@ class LifecycleContractTests(IsolatedAsyncioTestCase):
     """热更新订阅与状态文件容错。"""
 
     def test_declares_bot_config_subscription(self) -> None:
-        """不声明订阅范围，on_config_update 里的 bot 分支就永远是死代码。"""
+        """只订阅 bot：「self」不是合法范围（插件自己的配置宿主无条件推送）。
 
-        self.assertIn("bot", PLUGIN_MODULE.TargetReplyerPlugin.config_reload_subscriptions)
-        self.assertIn("self", PLUGIN_MODULE.TargetReplyerPlugin.config_reload_subscriptions)
+        写进 "self" 会让 normalize_config_reload_subscription 抛错，整个插件加载失败。
+        """
+
+        plugin = PLUGIN_MODULE.TargetReplyerPlugin()
+
+        self.assertEqual(plugin.get_config_reload_subscriptions(), ["bot"])
 
     async def test_corrupt_state_fails_load(self) -> None:
         """状态文件坏了要当场报错，不能按空状态跑然后把现场覆盖掉。"""

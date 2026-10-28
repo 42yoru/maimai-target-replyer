@@ -15,7 +15,6 @@ import asyncio
 import time
 
 from maibot_sdk import (
-    CONFIG_RELOAD_SCOPE_SELF,
     ON_BOT_CONFIG_RELOAD,
     Field,
     HookHandler,
@@ -86,7 +85,7 @@ class PluginSectionConfig(PluginConfigBase):
         default=False,
         description="是否启用插件；宿主在加载阶段读取，关闭时不会导入插件代码，改完需要重启",
     )
-    config_version: str = Field(default="0.3.8", description="配置版本")
+    config_version: str = Field(default="0.3.9", description="配置版本")
 
 
 class TargetConfig(PluginConfigBase):
@@ -192,8 +191,9 @@ class TargetReplyerPlugin(MaiBotPlugin):
     """被 @ 目标账号时触发自然接话的插件。"""
 
     config_model = TargetReplyerConfig
-    # 不声明订阅范围的话宿主不会为 "bot" 触发回调，on_config_update 里的 bot 分支永远是死代码
-    config_reload_subscriptions = (CONFIG_RELOAD_SCOPE_SELF, ON_BOT_CONFIG_RELOAD)
+    # 只订阅全局的 bot 配置，理由同 trader："self" 不在合法范围内（插件自己的配置宿主无条件推送），
+    # 写进去会让插件加载直接失败
+    config_reload_subscriptions = (ON_BOT_CONFIG_RELOAD,)
 
     @classmethod
     def build_config_schema(cls, **plugin_info: Any) -> Dict[str, Any]:

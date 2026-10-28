@@ -5,7 +5,7 @@
 
 [plugin]
 enabled = false
-config_version = "0.3.8"
+config_version = "0.3.9"
 
 [target]
 # 被 @ 时触发接话的账号，格式 platform:user_id，例如 qq:123456789；只支持一个
