@@ -203,6 +203,15 @@ def message_epoch(message: Dict[str, Any]) -> Optional[float]:
     return value
 
 
+def _bound(value: str, limit: int) -> str:
+    """把外来文本压成单行并截断：换行会伪造出新的"指令行"。"""
+
+    flattened = " ".join(str(value or "").split())
+    if len(flattened) <= limit:
+        return flattened
+    return flattened[: limit - 1] + "…"
+
+
 def build_intent(
     *,
     sender_name: str,
@@ -220,13 +229,15 @@ def build_intent(
     """
 
     place = f"群「{group_name}」" if group_name else "群里"
+    # 这些内容会被宿主 Planner 直接当提示词用，来源是群聊原文和便宜模型的输出，
+    # 两者都不受控：统一压成单行并截断，免得超长文本或伪造的"指令行"顶掉真正的任务说明
     lines = [
-        f"{sender_name} 在{place} @ 了 {target_name}：{text}",
+        f"{_bound(sender_name, 40)} 在{place} @ 了 {_bound(target_name, 40)}：{_bound(text, 500)}",
         f"这是发给 {target_name} 的消息，他本人没有回应。",
         f"请判断要不要以{bot_name}自己的身份自然地接一句：能答就直接答，不要因为「这是在问他」就让开。",
         "不模仿对方，也不要声明自己在代替谁回答；只说有依据的内容。",
         "只有涉及隐私、承诺、明显是玩笑，或者你确实答不上来时，才 stop()。",
     ]
     if answer_points:
-        lines.insert(3, f"可参考的要点（不是最终回复，按你自己的语气说）：{answer_points}")
+        lines.insert(3, f"可参考的要点（不是最终回复，按你自己的语气说）：{_bound(answer_points, 300)}")
     return "\n".join(lines)
