@@ -14,7 +14,14 @@ from typing import Any, Dict, List, Literal, Optional, Set
 import asyncio
 import time
 
-from maibot_sdk import Field, HookHandler, MaiBotPlugin, PluginConfigBase
+from maibot_sdk import (
+    CONFIG_RELOAD_SCOPE_SELF,
+    ON_BOT_CONFIG_RELOAD,
+    Field,
+    HookHandler,
+    MaiBotPlugin,
+    PluginConfigBase,
+)
 from maibot_sdk.types import ErrorPolicy, HookMode, HookOrder
 
 from .config_ui import build_config_ui_schema
@@ -79,7 +86,7 @@ class PluginSectionConfig(PluginConfigBase):
         default=False,
         description="是否启用插件；宿主在加载阶段读取，关闭时不会导入插件代码，改完需要重启",
     )
-    config_version: str = Field(default="0.3.5", description="配置版本")
+    config_version: str = Field(default="0.3.6", description="配置版本")
 
 
 class TargetConfig(PluginConfigBase):
@@ -185,6 +192,8 @@ class TargetReplyerPlugin(MaiBotPlugin):
     """被 @ 目标账号时触发自然接话的插件。"""
 
     config_model = TargetReplyerConfig
+    # 不声明订阅范围的话宿主不会为 "bot" 触发回调，on_config_update 里的 bot 分支永远是死代码
+    config_reload_subscriptions = (CONFIG_RELOAD_SCOPE_SELF, ON_BOT_CONFIG_RELOAD)
 
     @classmethod
     def build_config_schema(cls, **plugin_info: Any) -> Dict[str, Any]:
@@ -212,11 +221,9 @@ class TargetReplyerPlugin(MaiBotPlugin):
         """加载插件：准备状态存储、解析目标账号、读取 bot 账号。"""
 
         self._state = StateStore(self.ctx.paths.data_dir)
-        try:
-            self._state.load()
-        except StateError as exc:
-            self.ctx.logger.error("状态文件读取失败，本次按空状态运行: %s", exc)
-            self._state = StateStore(self.ctx.paths.data_dir)
+        # 损坏就抛（StateStore.load 已经抛 StateError）：按空状态跑会被下一次保存覆盖现场，
+        # 去重记录与额度历史一起没了，而且用户完全看不到发生过什么
+        self._state.load()
 
         self._refresh_target()
         self._refresh_prompt_template()

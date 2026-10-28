@@ -532,3 +532,34 @@ class JudgeIntegrationTest(PluginTestCase):
         await self.deliver(build_message())
         self.assertEqual(self.host.llm_calls, [])
         self.assertEqual(self.host.proactive_calls, [])
+
+
+class LifecycleContractTests(IsolatedAsyncioTestCase):
+    """热更新订阅与状态文件容错。"""
+
+    def test_declares_bot_config_subscription(self) -> None:
+        """不声明订阅范围，on_config_update 里的 bot 分支就永远是死代码。"""
+
+        self.assertIn("bot", PLUGIN_MODULE.TargetReplyerPlugin.config_reload_subscriptions)
+        self.assertIn("self", PLUGIN_MODULE.TargetReplyerPlugin.config_reload_subscriptions)
+
+    async def test_corrupt_state_fails_load(self) -> None:
+        """状态文件坏了要当场报错，不能按空状态跑然后把现场覆盖掉。"""
+
+        with tempfile.TemporaryDirectory() as tmp:
+            data_dir = Path(tmp) / "data"
+            data_dir.mkdir(parents=True, exist_ok=True)
+            (data_dir / "state.json").write_text("{ 这不是 JSON", encoding="utf-8")
+
+            host = FakeHost()
+            plugin = PLUGIN_MODULE.TargetReplyerPlugin()
+            context = PluginContext(
+                plugin_id=MANIFEST["id"],
+                rpc_call=host.rpc,
+                paths=PluginPaths(data_dir=data_dir, runtime_dir=data_dir),
+            )
+            plugin._set_context(context)
+            plugin.set_plugin_config(build_config())
+
+            with self.assertRaises(PLUGIN_MODULE.StateError):
+                await plugin.on_load()
