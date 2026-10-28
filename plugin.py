@@ -86,7 +86,7 @@ class PluginSectionConfig(PluginConfigBase):
         default=False,
         description="是否启用插件；宿主在加载阶段读取，关闭时不会导入插件代码，改完需要重启",
     )
-    config_version: str = Field(default="0.3.7", description="配置版本")
+    config_version: str = Field(default="0.3.8", description="配置版本")
 
 
 class TargetConfig(PluginConfigBase):
@@ -247,7 +247,7 @@ class TargetReplyerPlugin(MaiBotPlugin):
             task.cancel()
         if self._tasks:
             await asyncio.gather(*tuple(self._tasks), return_exceptions=True)
-        self._save_state()
+        await self._save_state()
 
     async def on_config_update(self, scope: str, config_data: Dict[str, Any], version: str) -> None:
         """处理配置热更新。"""
@@ -354,7 +354,10 @@ class TargetReplyerPlugin(MaiBotPlugin):
         message_id = str(message.get("message_id") or "")
         stream_id = str(message.get("session_id") or "")
         if not message_id or not stream_id:
-            self.ctx.logger.error("候选消息缺少 message_id 或 session_id，跳过: %r", message)
+            # 只记结构，不要把整条消息（含正文、昵称、群名）打进日志
+            self.ctx.logger.error(
+                "候选消息缺少 message_id 或 session_id，跳过: keys=%s", sorted(message)
+            )
             return
 
         now = time.time()
@@ -372,7 +375,7 @@ class TargetReplyerPlugin(MaiBotPlugin):
             remaining = self._state.cooldown_remaining(stream_id, now, self.config.reply.cooldown_seconds)
             if remaining > 0:
                 self.ctx.logger.info("聊天流冷却中（还剩 %.0f 秒），跳过 message_id=%s", remaining, message_id)
-                self._save_state()
+                await self._save_state()
                 return
             hourly_count = self._state.hourly_count(now)
             if hourly_count >= self.config.reply.hourly_limit:
@@ -382,10 +385,10 @@ class TargetReplyerPlugin(MaiBotPlugin):
                     self.config.reply.hourly_limit,
                     message_id,
                 )
-                self._save_state()
+                await self._save_state()
                 return
             self._pending_streams.add(stream_id)
-            self._save_state()
+            await self._save_state()
 
         try:
             await asyncio.sleep(self.config.reply.delay_seconds)
@@ -411,7 +414,8 @@ class TargetReplyerPlugin(MaiBotPlugin):
 
         recent = await self.ctx.message.get_recent(stream_id, limit=30)
         if not isinstance(recent, list):
-            self.ctx.logger.error("读取最近消息失败，放弃本次接话: %r", recent)
+            # 同上：recent 最多 30 条消息，%r 会把正文与昵称全部写进日志
+            self.ctx.logger.error("读取最近消息失败，放弃本次接话: type=%s", type(recent).__name__)
             return None
         return [item for item in recent if isinstance(item, dict)]
 
@@ -629,7 +633,7 @@ class TargetReplyerPlugin(MaiBotPlugin):
                 async with self._state_lock:
                     if self._state is not None:
                         self._state.record_trigger(stream_id, time.time())
-                        self._save_state()
+                        await self._save_state()
                 return
 
             error_text = str(result.get("error") or "") if isinstance(result, dict) else repr(result)
@@ -726,13 +730,17 @@ class TargetReplyerPlugin(MaiBotPlugin):
         if not self.config.plugin.enabled:
             self.ctx.logger.info("插件当前未启用（plugin.enabled=false）")
 
-    def _save_state(self) -> None:
-        """保存状态；失败只记录，不打断已经发生的投递。"""
+    async def _save_state(self) -> None:
+        """保存状态；失败只记录，不打断已经发生的投递。
+
+        同步写文件不能压在事件循环上，而且调用点大多在 `_state_lock` 里——
+        持锁做磁盘 IO 会把其它聊天流的处理全堵住。
+        """
 
         if self._state is None:
             return
         try:
-            self._state.save()
+            await asyncio.to_thread(self._state.save)
         except StateError as exc:
             self.ctx.logger.error("状态保存失败: %s", exc)
 

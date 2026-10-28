@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 
 @dataclass(frozen=True)
@@ -156,10 +156,12 @@ def build_config_ui_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
 
     source_sections: Dict[str, Any] = schema.get("sections") or {}
     sections: Dict[str, Any] = {}
-    tabs: list[Dict[str, Any]] = []
+    tabs: List[Dict[str, Any]] = []
 
     for tab_id, (tab_title, section_ids) in _TABS.items():
-        tabs.append({"id": tab_id, "title": tab_title, "sections": list(section_ids)})
+        tabs.append(
+            {"id": tab_id, "title": tab_title, "sections": list(section_ids), "order": len(tabs)}
+        )
         for section_id in section_ids:
             spec = _SECTIONS[section_id]
             template_section = source_sections.get(spec.source)

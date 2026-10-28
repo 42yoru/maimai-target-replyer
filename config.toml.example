@@ -1,0 +1,55 @@
+# 「替主人回话」配置模板
+#
+# 复制成 config.toml 再改（插件第一次加载也会自动生成一份）。
+# 最常改的三处：[target] user、[scope] groups、[prompt] template。
+
+[plugin]
+enabled = false
+config_version = "0.3.8"
+
+[target]
+# 被 @ 时触发接话的账号，格式 platform:user_id，例如 qq:123456789；只支持一个
+# 平台前缀会和消息平台比对，写错了不会误触发
+user = ""
+# yield = 目标账号最近发过言就让路；engage = 他在线也照常接
+presence_policy = "yield"
+# 判断「目标账号最近发过言」的时间窗（秒）
+presence_window_seconds = 180
+
+[scope]
+# 只处理这些平台的消息
+platforms = ["qq"]
+# 只处理这些群；留空表示插件不生效
+groups = []
+
+[decide]
+# cheap_then_planner = 先用小模型预判再决定要不要触发；planner_only = 跳过预判直接触发
+mode = "cheap_then_planner"
+# 预判使用的模型任务名，默认 utils（快而便宜）
+task_name = "utils"
+# 可直选具体模型；留空则沿用 task_name
+model_name = ""
+temperature = 0.0
+# 要留出思考模型的 reasoning 余量
+max_tokens = 2000
+# 置信度低于这个值就不接
+confidence_threshold = 0.6
+rpc_timeout_ms = 60000
+
+[reply]
+# 同一聊天流两次接话之间的最短间隔（秒）
+cooldown_seconds = 180
+# 每小时最多触发几次接话（投递前会再复核一次，跨聊天流并发也打不穿）
+hourly_limit = 6
+# 命中后延迟多久再读上下文并触发
+delay_seconds = 1.5
+# 会话还没注册时的重试间隔（秒）
+retry_delay_seconds = 1.5
+# 拼进 intent 的原文最大长度；进 Planner 提示词前还会压成单行并截断
+max_text_chars = 500
+
+[prompt]
+# 预判用的提示词模板，可在 WebUI「高级 → 提示词」里改。
+# 必须保留 $bot_name、$target_name、$text 等占位符；缺了会在加载时报错并点名缺哪个。
+# 不填就等于用插件内置的那一份。
+# template = """..."""
