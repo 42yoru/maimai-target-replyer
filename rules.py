@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+import math
+
 ALL_TARGET_ID = "all"
 """@全体成员 在 at 段里使用的伪用户号。"""
 
@@ -193,6 +195,8 @@ def message_epoch(message: Dict[str, Any]) -> Optional[float]:
     try:
         value = float(str(raw))
     except (TypeError, ValueError):
+        return None
+    if not math.isfinite(value):
         return None
 
     magnitude = abs(value)
